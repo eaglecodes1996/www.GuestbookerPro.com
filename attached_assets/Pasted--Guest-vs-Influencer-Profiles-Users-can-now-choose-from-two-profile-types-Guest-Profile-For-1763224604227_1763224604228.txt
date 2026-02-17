@@ -1,0 +1,46 @@
+🧑‍🎤 Guest vs. Influencer Profiles
+
+Users can now choose from two profile types:
+
+Guest Profile
+For speakers who want to be interviewed on podcasts or shows. Tailored toward finding host‑driven formats (e.g., podcasts that feature guest interviews).
+
+Influencer Profile
+Designed for creators seeking video collaborations, cross‑channel appearances, or co‑productions rather than formal interviews. The discovery engine emphasizes channels open to collaborative content (e.g., dual live streams, guest co‑hosts, or guest vlog appearances).
+
+Both types allow:
+
+A customized bio, keywords, and minimum audience size.
+
+Unlimited discovery (thousands of shows) and unlimited email outreach.
+
+Separate pipelines and follow‑up schedules per profile.
+
+🗃️ Central Show Database & Discovery Flow
+
+Site‑Wide Show Cache
+Every show you discover or manually add is stored in a shared database accessible by the entire platform. If a show has already been scanned and approved for another user, it doesn’t require another external API call. This dramatically reduces repeated searches and speeds up discovery.
+
+Discovery Prioritization
+
+Check the internal database for relevant shows that match a user’s keywords, subscriber range, activity status, and profile type (Guest or Influencer).
+
+If no matches are found, run a new external search via the Podcast Index API and YouTube API. Results are added to both the user’s list and the shared database automatically.
+
+Filter & merge duplicates so that users don’t accidentally reach out to the same show multiple times.
+
+This internal caching system ensures faster results and reduces unnecessary API usage.
+
+🎯 Updated Platform Snapshot
+
+Mass discovery: Pull thousands of shows per user profile, leveraging both internal cache and external APIs.
+
+Unlimited outreach: Send unlimited emails for each profile, managed in the background with proper rate limits.
+
+Customizable keywords: Users can refine topic filters for every profile—whether guest or influencer.
+
+Auto follow‑ups: Shows marked “Later” are automatically recontacted every six months.
+
+Unified admin control: Manage users, profiles, discovery thresholds, and email activity—all from one dashboard.
+
+Subscriptions: Tiered plans include Basic, Growth, Pro, and Agency, each with unlimited emails and an escalating number of profiles and show discoveries.

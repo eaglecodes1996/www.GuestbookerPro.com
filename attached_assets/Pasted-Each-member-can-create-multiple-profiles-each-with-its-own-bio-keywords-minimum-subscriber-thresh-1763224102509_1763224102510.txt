@@ -1,0 +1,75 @@
+Each member can create multiple profiles, each with its own bio, keywords, minimum subscriber threshold, and activity window. This allows the same person to target different niches or personas separately (e.g., Shinto healing vs. occult research).
+
+Custom Keyword Filters
+Users can fully edit their keyword lists (e.g., Shinto, energy clearing, esoteric traditions). These keywords drive the relevance engine when discovering shows.
+A profile can adjust its discovery thresholds (minimum subscriber count, guest‑focus score, recent activity) at any time.
+
+Admin Controls
+Platform admins can:
+
+Monitor users, profiles, and usage quotas.
+
+Approve or blacklist shows from the global database.
+
+Change default discovery and email send caps.
+
+View logs of discoveries and email sends for compliance.
+
+Manual Show Addition
+Users or admins can manually add a show to a profile’s pipeline with a simple form (name, URL, email, guest score).
+
+📜 Core Features
+
+Massive Show Discovery
+
+The system pulls in thousands of podcasts and YouTube channels per profile by querying the Podcast Index API and YouTube Data API.
+
+Filters by subscriber count, activity, guest‑friendly score, and keyword relevance.
+
+Only surfaces shows that include a public, reachable contact email.
+
+Guest Score Analysis
+
+Analyzes episode titles (e.g., “Interview with…”, “Featuring…”) to assign a guest‑focus rating (0–100), highlighting shows more likely to feature guests.
+
+Unlimited Email Outreach
+
+Members can email every qualified show they discover.
+
+Emails are sent in the background through a queue to avoid hitting Gmail’s daily limits, with automatic pacing (e.g., every few minutes) to minimize spam risk.
+
+Users can connect multiple Gmail or SMTP accounts for higher throughput.
+
+Automated Follow‑Ups
+
+Profiles can tag shows as “Later” or “Maybe” and schedule follow‑ups every six months.
+
+The system re‑scores and re‑contacts shows automatically, using a follow‑up email template (e.g., “It’s been six months since my last message…”).
+
+Pipeline Management
+Shows progress through stages—Discovered → Qualified → Pitched → Later → Responded → Booked → Published.
+Users can sort, filter, and bulk‑update shows across the pipeline.
+
+Analytics & Insights
+
+Track discovery counts, email sends, response rates, booking rates, and performance by keyword.
+
+Visualize funnel data to see where outreach is most effective.
+
+💳 Subscription Plans & Payment
+
+All payments are handled via Stripe. Users can upgrade, downgrade, or cancel at any time.
+
+Plan	Monthly Price	Profiles Allowed	Shows Discovered/Month	Emails Sent/Month	Follow‑Up Automation	Notes
+Basic	$39	1	500	Unlimited	No	Good for individual creators
+Growth	$79	3	2,500	Unlimited	Yes (6‑month cycle)	Ideal for authors or publicists
+Pro	$149	10	5,000	Unlimited	Yes & Custom	Designed for agencies and large teams
+Agency	$299	25	15,000	Unlimited	Yes & Custom	White‑label ready; includes priority support
+
+Add‑ons:
+
+Additional profiles ($10/month each)
+
+Extra show discovery batches ($20/month per 1,000 shows)
+
+Custom follow‑up intervals ($10/month)

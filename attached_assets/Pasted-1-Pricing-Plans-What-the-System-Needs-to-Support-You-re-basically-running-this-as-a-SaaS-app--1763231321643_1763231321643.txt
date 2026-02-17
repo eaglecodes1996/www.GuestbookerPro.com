@@ -1,0 +1,360 @@
+1. Pricing & Plans – What the System Needs to Support
+
+You’re basically running this as a SaaS app. It should support:
+
+Multiple plans (e.g. Starter / Pro / Agency)
+
+Two billing cycles:
+
+Monthly (default)
+
+Yearly with 10% discount vs. paying 12 months
+
+Recurring subscriptions:
+
+Auto-bill every month or year
+
+Save payment method securely
+
+One-off purchases or add-ons (if you want later):
+
+Extra outreach credits, etc.
+
+2. Admin: Full Control Over Prices (Fixing “I cannot change the prices”)
+
+Right now you said: “I cannot change the prices in admin.”
+The requirement: you must be able to.
+
+2.1. Admin Pricing Panel
+
+Inside the admin dashboard, there should be a Pricing & Plans section where you can:
+
+Create / edit / delete plans, each with:
+
+Plan name: “Starter”, “Pro”, “Agency”, etc.
+
+Description
+
+Features:
+
+Max outreach emails / month
+
+Max saved shows
+
+Number of user seats, etc.
+
+Base monthly price (e.g. $29)
+
+Automatically computed or editable yearly price:
+
+Yearly = monthly_price * 12 * 0.9 (10% off)
+or you set it manually, but app shows what 10% off would be so you know.
+
+Toggle:
+
+Active / inactive (so you can hide old plans)
+
+2.2. Price Changes Behavior
+
+When you change a price:
+
+Future sign-ups see the new prices immediately.
+
+Existing subscribers can:
+
+Stay on old pricing (grandfathered) OR
+
+Be auto-switched going forward (you choose this behavior in admin).
+
+Admin panel shows:
+
+Current plan prices
+
+Historical changes (optional log, helpful for clarity)
+
+3. Payment Methods: Where They Live and How They Attach to Prices
+
+You asked:
+
+“I also need a place to put the payment methods and have those attach to the main prices.”
+
+3.1. Payment Methods in Admin
+
+Admin should have a Payments & Gateways section where you can:
+
+Connect providers like:
+
+Credit/debit cards (via Stripe, etc.)
+
+PayPal
+
+Maybe bank transfer or others later
+
+For each provider:
+
+On/off toggle
+
+Display name (what users see, e.g. “Pay with card”)
+
+Any fees or rules specific to that method (if you need to show that)
+
+The app then knows:
+
+Which payment methods are available for each plan.
+
+Default method if multiple are active.
+
+3.2. Payment Methods for Users
+
+On the user side (billing page):
+
+Users can:
+
+Add a payment method (card, etc.)
+
+Set a default payment method
+
+Remove or update methods (if not tied to an active subscription, or after adding a new one)
+
+These stored methods are what the app uses to:
+
+Charge monthly
+
+Charge the yearly amount
+
+Apply future charges automatically
+
+4. Shopping Cart: How It Should Work
+
+You said:
+
+“Shopping card needs to implement and work.”
+
+Think of this as a simple cart specialized for subscriptions, not a big e-commerce store.
+
+4.1. Cart Behavior
+
+User clicks “Get Started” or “Upgrade to Pro”.
+
+The cart shows:
+
+Selected plan: e.g. Pro
+
+Billing cycle:
+
+Monthly price (e.g. $29 / month)
+
+OR Yearly price with clear 10% savings:
+“$313 / year (10% off vs $348)”
+
+If you add one-off items later (like “+1000 extra outreach emails”), they also appear in cart.
+
+4.2. Cart Summary
+
+Cart displays:
+
+Plan name
+
+Billing cycle (Monthly or Yearly)
+
+Price breakdown:
+
+Base price
+
+10% discount shown for yearly (either as a separate line or baked in with a note)
+
+Total due now
+
+Recurring amount:
+
+“Renews at $29/month” or “Renews at $313/year”
+
+User then proceeds to Checkout.
+
+5. Subscriptions: Monthly & Yearly With 10% Discount
+5.1. Monthly Subscription
+
+When user chooses Monthly:
+
+The system:
+
+Charges the first month immediately.
+
+Creates a subscription with:
+
+Next billing date = today + 1 month.
+
+Uses their saved/default payment method automatically.
+
+5.2. Yearly Subscription (10% Off)
+
+When user chooses Yearly:
+
+System:
+
+Computes yearly price = monthly_price * 12 * 0.9.
+
+Charges full year up front.
+
+Sets:
+
+Next billing date = today + 1 year.
+
+Interface must clearly show:
+
+Regular 12-month cost vs discounted yearly:
+
+“$29/month OR $313/year (10% off)”
+
+5.3. Upgrades / Downgrades Between Plans
+
+Scenarios:
+
+Monthly → Higher monthly plan
+
+Upgrade takes effect immediately.
+
+Optionally pro-rate (partial charge for the rest of the month).
+
+Monthly → Yearly
+
+Can either:
+
+Start yearly from today, using pro-rated credit from remaining monthly time,
+
+Or start yearly when current month ends (cleaner messaging).
+
+Yearly → Monthly
+
+Typically apply at the end of the current paid year (no refund, just change renewal behavior).
+
+Plan Downgrade
+
+Takes effect at next billing date to avoid messy feature changes mid-cycle.
+
+All this should be configurable in Admin policies:
+
+“Prorate on upgrade: Yes/No”
+
+“Downgrades effective date: now / next cycle”
+
+6. Saving Payment Methods for Recurring Billing
+
+You said:
+
+“Save to collect monthly subscriptions.”
+
+Behavior:
+
+When user completes checkout for a subscription:
+
+Their payment method is securely saved as a “billing method”.
+
+Subscription is linked to that method.
+
+For recurring charges:
+
+On renewal date, system automatically:
+
+Charges the saved method.
+
+Updates subscription status.
+
+If a charge fails:
+
+System:
+
+Retries (e.g. after 1 day, then 3 days, etc.).
+
+Flags payment issue on user account.
+
+Sends email: “Update your payment method to keep your subscription active.”
+
+7. Billing & Receipts
+
+To make this professional and trackable:
+
+For every successful charge:
+
+Generate a receipt with:
+
+Plan name
+
+Period covered (e.g., Nov 16–Dec 15)
+
+Amount charged
+
+Payment method (e.g. last 4 digits of card)
+
+Email the receipt to the user.
+
+User’s Billing History page:
+
+List of all charges, dates, amounts.
+
+Download receipts as PDF (optional).
+
+8. Cancellation & Renewal Logic
+8.1. User Cancels
+
+When a user cancels:
+
+Subscription is set to:
+
+“Canceled – pending end of current term”
+
+They:
+
+Keep access until the paid period ends.
+
+Renewal:
+
+No further charges after end date.
+
+Status updates to “Expired”.
+
+8.2. Admin Cancel / Pause
+
+Admin can:
+
+Cancel a subscription immediately.
+
+Pause a subscription:
+
+Temporarily stop recurring billing.
+
+User may or may not retain access (decided by policy).
+
+9. Tying It All Back to the Outreach Features
+
+Each plan tier can control what the app does:
+
+Starter:
+
+e.g., 200 outreach emails/month
+
+Basic search & list features
+
+Pro:
+
+e.g., 1,000 outreach emails/month
+
+Multi-topic campaigns
+
+Automatic follow-ups
+
+Agency:
+
+Multi-user accounts
+
+Higher limits
+
+Priority support
+
+The app should:
+
+Check the user’s active plan.
+
+Enforce the limits per billing period.
+
+Reset monthly usage numbers on each monthly/annual renewal.

@@ -1,0 +1,269 @@
+GUESTBOOKER PRO — FULL PRICING + FEATURE + LIMITS SPEC
+
+Below is the complete specification for how the subscription tiers, email limits, search limits, and tier-based features must work.
+
+Use this as the master document during development.
+
+1. Subscription Tiers (Finalized)
+Basic — $29.99/month ($323.89/year – save 10%)
+
+100 outreach emails per month
+
+100 show search results per month (must match email limit)
+
+Standard AI email templates
+
+Gmail integration
+
+Manual outreach only
+
+CRM: basic (show name + email + status)
+
+Growth — $39/month ($421.20/year – save 10%)
+
+500 outreach emails per month
+
+500 show search results per month
+
+AI outreach templates
+
+Gmail integration
+
+Automated follow-up emails
+
+CRM: notes + custom tags
+
+Unlocks “Upgrade from Basic” modals
+
+Pro — $99/month ($1069.20/year – save 10%)
+
+1,000 outreach emails per month
+
+1,000 show search results per month
+
+AI outreach templates
+
+Gmail integration
+
+Multi-step follow-up sequences
+
+CRM: full history log (emails sent, replies, timestamps)
+
+Priority in search queue
+
+Agency — $399.99/month ($4319.89/year – save 10%)
+
+10,000 outreach emails per month
+
+10,000 show search results per month
+
+AI outreach templates
+
+Gmail integration
+
+Full automation suite
+
+Team accounts (3–10 users)
+
+Shared CRM dashboard
+
+Bypass search throttling (unlimited searches until quota is used)
+
+2. Core Rule: Search Results Must Equal Email Limits
+
+Every tier must guarantee that search results and email send capacity match.
+
+Example:
+
+If a user has 500 emails/month, they must receive at least 500 show results/month.
+
+This prevents a user from paying for 500 emails but only getting 50 shows.
+
+3. Technical Implementation of Search Limits
+Option Used: Monthly Search Pool (recommended)
+
+Each user has a monthly pool of allowed search results equal to their email limit.
+
+searchPool = {
+  basic: 100,
+  growth: 500,
+  pro: 1000,
+  agency: 10000
+};
+
+When the user searches:
+
+Determine their tier
+
+Subtract the number of results returned from their remaining pool
+
+Prevent searches if pool = 0
+
+Reset monthly via cron
+
+Backend logic:
+const tier = user.subscriptionTier;
+const limitRemaining = user.searchRemaining;
+
+// Get all results from AI
+const results = fullResults.slice(0, limitRemaining);
+
+// Deduct from pool
+user.searchRemaining -= results.length;
+user.save();
+
+return results;
+
+4. Monthly Email Limits Implementation
+
+Store email limits alongside search limits:
+
+emailLimits = {
+  basic: 100,
+  growth: 500,
+  pro: 1000,
+  agency: 10000
+};
+
+
+Each time a user sends an email:
+
+Check their remaining quota
+
+Block sending if quota is zero
+
+Show upgrade modal
+
+Reset both counters monthly.
+
+5. CRM Rules by Tier
+Basic
+
+show name
+
+show email
+
+status only (new, contacted, replied, booked)
+
+Growth
+
+includes notes
+
+includes custom tags
+
+Pro
+
+adds activity history:
+
+email sent timestamps
+
+follow-up schedule
+
+reply log
+
+Agency
+
+team-wide CRM
+
+lead assignment
+
+shared notes
+
+shared activity logs
+
+6. Follow-Up Automation Rules
+Basic
+
+No automation
+
+UI should show locked features with “Upgrade to unlock” messaging
+
+Growth
+
+Single automated follow-up after X days
+
+User sets delay (1–30 days)
+
+Pro
+
+Multi-step sequences (e.g., 3 follow-ups)
+
+Users can customize each step
+
+Agency
+
+Unlimited sequences
+
+Assign follow-ups to team members
+
+7. Tier-Based UI Visibility
+
+Frontend must check user tier before rendering features:
+
+{userTier !== "basic" && <AutoFollowUpSettings />}
+{userTier === "pro" && <MultiSequenceSettings />}
+{userTier === "agency" && <TeamManagement />}
+
+
+If restricted:
+
+Show modal: “This feature is available on the Growth plan and above.”
+
+8. Team Account Logic (Agency Tier)
+
+Agency accounts must be implemented as:
+
+Parent account
+
+Holds the quota
+
+Shares CRM
+
+Manages users
+
+Sub-accounts (3–10)
+
+Use the same CRM
+
+Connect their own Gmail
+
+Draw from the same email + search pool
+
+Database structure example
+{
+  ownerId: "user123",
+  teamMembers: ["user456", "user789", ...],
+  sharedCRM: true,
+  emailRemaining: 10000,
+  searchRemaining: 10000
+}
+
+9. Annual Billing Implementation
+
+Calculate as:
+
+annualPrice = monthlyPrice * 12 * 0.9
+
+
+Store in DB:
+
+billingFrequency: "monthly" | "annual"
+
+
+Bill via Stripe or LemonSqueezy.
+
+10. Upgrade Modals (copy/paste text)
+Exceeded Email Limit
+
+“You’ve reached your monthly outreach limit.
+Upgrade your plan to unlock more emails and show results.”
+
+Feature Locked
+
+“This feature is available on the Growth plan and above.
+Upgrade to automate follow-ups and scale your outreach.”
+
+Search Limit Reached
+
+“You’ve reached your monthly search quota.
+Upgrade your plan to unlock more shows and outreach opportunities.”

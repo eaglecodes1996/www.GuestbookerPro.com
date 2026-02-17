@@ -1,0 +1,296 @@
+GUESTBOOKER PRO — AFFILIATE PROGRAM SPECIFICATION (Replit-Ready)
+
+This is the full blueprint for your affiliate system.
+
+1. Affiliate Program Overview
+
+GuestBooker Pro will allow users and non-users to earn 20–30% recurring monthly commission for every customer they refer.
+
+Affiliates receive commissions as long as their referred customer remains subscribed.
+
+2. Commission Structure
+Default Commission:
+
+20% recurring monthly
+
+High-Performing Affiliates (optional):
+
+200+ referred MRR: 25%
+
+500+ referred MRR: 30%
+
+These tiers are optional but recommended for scaling.
+
+3. How Affiliate Tracking Works
+Each affiliate gets:
+
+a unique referral ID
+
+a unique referral link
+
+Example:
+
+https://guestbookerpro.com/?ref=AFF12345
+
+When a user visits using this link:
+
+Store the affiliate ID in a cookie for 90 days
+
+If the visitor creates an account, associate the new user with the affiliateID
+
+If the user subscribes, generate commission entries
+
+Cookie requirements:
+
+Duration: 90 days
+
+Renewal: each visit resets the 90-day countdown
+
+Must persist across sign-up flow
+
+4. Database Structure
+Affiliate table
+Affiliate {
+  id: String,
+  userId: String,        // if affiliate is a customer
+  commissionRate: Number, // 0.20, 0.25, or 0.30
+  referralId: String,    // e.g. AFF12345
+  clicks: Number,
+  signups: Number,
+  activeSubscribers: Number,
+  totalCommissionEarned: Number,
+  totalCommissionPaid: Number,
+  createdAt: Date
+}
+
+Referred User record
+ReferredUser {
+  userId: String,
+  affiliateId: String,
+  subscriptionStatus: String, // trial, active, canceled
+  monthlyPrice: Number,
+  commissionRate: Number,
+  createdAt: Date
+}
+
+Commission ledger entry
+Commission {
+  id: String,
+  affiliateId: String,
+  userId: String,
+  amount: Number,
+  month: String, // e.g. "2025-01"
+  status: String, // pending, payable, paid
+  createdAt: Date
+}
+
+5. Commission Logic
+When a referred user subscribes:
+
+Calculate commission:
+commission = userMonthlyPrice * affiliateCommissionRate
+
+Recurring payments:
+
+Each month, when Stripe or LemonSqueezy processes billing:
+
+Check if the user is still active
+
+Create a new commission record
+
+Add to the affiliate's pending commissions
+
+If the user cancels subscription:
+
+Commissions stop automatically
+
+Past commissions remain payable
+
+6. Payout Rules
+Minimum payout threshold:
+
+$50
+
+Payout frequency:
+
+Monthly
+
+Payout method:
+
+PayPal
+
+Wise
+
+Stripe Connect (optional, advanced)
+
+Payout processing:
+
+Affiliates request payout OR system auto-pays monthly
+
+Mark all commissions with status pending as paid
+
+Deduct from affiliate balance
+
+Save payout record
+
+7. Affiliate Dashboard Requirements
+
+Affiliates must see:
+
+A. Overview panel
+
+Total earned
+
+Total paid
+
+Current balance
+
+Commission rate (20–30%)
+
+Referral link
+
+B. Performance metrics
+
+Clicks
+
+Signups
+
+Active subscribers
+
+Monthly commission chart
+
+C. Commission ledger
+
+List of all commissions
+
+Amount
+
+Date
+
+User
+
+Status (pending/paid)
+
+D. Withdrawal button
+
+Disabled until balance ≥ $50
+
+On click:
+
+Show payout modal
+
+Confirm details
+
+Trigger payout process
+
+8. Admin Dashboard Requirements
+
+Admin needs to see:
+
+All affiliates
+
+Their performance
+
+Commission owed
+
+Payouts due
+
+Export CSV option
+
+Button to mark commissions as paid manually
+
+Ability to change affiliate rates
+
+9. Affiliate Sign-up Flow
+Flow:
+
+User clicks “Become an Affiliate”
+
+Sign in or create an account
+
+System generates referral ID automatically
+
+User is redirected to affiliate dashboard
+
+User returns to dashboard anytime via "Affiliate Program" link
+
+If affiliates do NOT need a GuestBooker account:
+
+Allow email + password standalone affiliate sign-up
+
+Store as affiliate-only user
+
+They do NOT get app access unless they subscribe
+
+10. Referral Link Requirements
+Format:
+https://guestbookerpro.com?ref=AFF12345
+
+Behavior:
+
+Always store ref in cookies
+
+Pass through all pages
+
+Persist into sign-up form hidden fields
+
+Save to database upon account creation
+
+If user signs up directly through Stripe checkout:
+
+Pass the referral ID into Stripe metadata:
+
+{
+  "affiliateId": "AFF12345"
+}
+
+11. Fraud Prevention Rules
+
+Important for keeping payouts clean.
+
+One commission per user (no duplicates)
+
+No self-referrals
+
+No commission on refunded charges
+
+No commission if the user pays with same card as affiliate
+
+Admin override for suspected fraud
+
+12. Optional High-Value Additions (recommended)
+A. Affiliate Assets Page
+
+Pre-made banners
+
+Sample outreach messages
+
+Pre-written email templates
+
+B. Leaderboard
+
+Shows top affiliates
+
+Gamification increases sign-ups
+
+C. Webhooks
+
+Notify affiliates when they earn commissions
+
+13. Copy-and-Paste Text for Affiliate Marketing Page
+
+Become a GuestBooker Pro Affiliate
+Earn 20% monthly recurring commissions for each person you refer.
+Your earnings continue as long as they stay subscribed.
+
+Unique referral link
+
+90-day cookie tracking
+
+Monthly payouts
+
+Real-time dashboard
+
+No limits on earnings
+
+Start earning today.

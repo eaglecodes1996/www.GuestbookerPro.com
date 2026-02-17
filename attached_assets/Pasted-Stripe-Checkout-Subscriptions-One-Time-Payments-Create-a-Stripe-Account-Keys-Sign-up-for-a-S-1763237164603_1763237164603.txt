@@ -1,0 +1,102 @@
+Stripe Checkout (Subscriptions & One‑Time Payments)
+
+Create a Stripe Account & Keys
+
+Sign up for a Stripe account and obtain your publishable key (for the client) and secret key (for your server).
+
+Define Products and Prices
+
+Create your product and associated price(s) in the Stripe dashboard or via the API. You’ll need these when you create a Checkout Session.
+
+Create a Checkout Session on Your Server
+
+Build an endpoint (e.g., /create-checkout-session) that calls the Stripe API to create a Checkout Session.
+
+Set the mode parameter according to the type of payment: payment for one‑time charges, subscription for recurring plans, or setup to save payment details
+docs.stripe.com
+.
+
+Provide a return URL in the session creation request so Stripe knows where to redirect users after the payment attempt
+docs.stripe.com
+. Include {CHECKOUT_SESSION_ID} in the URL so your app can retrieve the session on return.
+
+The API returns a client_secret which your client will use to complete the payment
+docs.stripe.com
+.
+
+Build the Client-Side Checkout Page
+
+Load Stripe.js from https://js.stripe.com on your checkout page to remain PCI compliant
+docs.stripe.com
+.
+
+Initialize Stripe with your publishable key and use the Payment Element or prebuilt Checkout to render the payment form.
+
+When your user submits the payment, call stripe.confirm() with the client_secret. Handle errors and show success or failure messages.
+
+After payment, redirect the user to your return page and use the session ID to check the payment status via your server.
+
+🟢 PayPal Subscriptions (Recurring Payments)
+
+Get Developer Credentials
+
+Log in to PayPal’s developer dashboard and obtain your Client ID, access token, business account credentials, and personal (test) account credentials
+developer.paypal.com
+.
+
+Create a Product
+
+Use the Catalog Products REST API to create a product representing your service. The request includes a name, description, type and other details. A successful response returns a product id that you’ll use in the next step
+developer.paypal.com
+.
+
+Create a Subscription Plan
+
+With the product ID, call the Subscriptions REST API to create a plan.
+
+Define billing cycles (trial and recurring cycles), pricing details, setup fees, tax, and failure behaviour. The API returns a plan id
+developer.paypal.com
+.
+
+Embed the PayPal Subscription Button
+
+Add the PayPal JavaScript SDK to your webpage:
+
+<script src="https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID&vault=true&intent=subscription"></script>
+<div id="paypal-button-container"></div>
+<script>
+  paypal.Buttons({
+    createSubscription: function(data, actions) {
+      return actions.subscription.create({
+        plan_id: 'YOUR_PLAN_ID'
+      });
+    },
+    onApprove: function(data, actions) {
+      alert('You have successfully subscribed to ' + data.subscriptionID);
+    }
+  }).render('#paypal-button-container');
+</script>
+
+
+Replace YOUR_CLIENT_ID with the Client ID from your developer dashboard and YOUR_PLAN_ID with the plan ID returned by the Create Plan API
+developer.paypal.com
+.
+
+When a user clicks the button, PayPal creates the subscription and handles the payment flow. On success, you can show a confirmation message or redirect to your thank‑you page.
+
+🧾 Key Points for Checkout Integration
+
+Server-side Logic: All sensitive operations (creating sessions, products, and plans) must be performed on the server using your secret API keys or access tokens. Never expose secret keys to the client.
+
+Return/Success URLs: Both Stripe and PayPal require that you specify where to redirect users after a payment or subscription. Make sure these pages are implemented on your site.
+
+Testing: Use the sandbox/test modes offered by PayPal and Stripe to validate your integration before going live.
+
+Security: Always load external scripts from the official domains (js.stripe.com for Stripe and paypal.com/sdk/js for PayPal)
+docs.stripe.com
+developer.paypal.com
+.
+
+Subscription vs. One‑Time: Stripe’s Checkout supports one‑time and recurring payments; set mode accordingly
+docs.stripe.com
+. PayPal’s subscription buttons handle recurring payments; for one‑time payments you can use the PayPal Checkout flow instead.

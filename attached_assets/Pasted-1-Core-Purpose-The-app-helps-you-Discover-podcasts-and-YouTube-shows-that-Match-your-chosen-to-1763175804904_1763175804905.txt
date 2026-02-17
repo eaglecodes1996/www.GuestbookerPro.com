@@ -1,0 +1,506 @@
+1. Core Purpose
+
+The app helps you:
+
+Discover podcasts and YouTube shows that:
+
+Match your chosen topics.
+
+Actively feature guests.
+
+Filter out duplicates and low-quality/irrelevant shows.
+
+Automatically send personalized outreach emails using a message you provide.
+
+Track replies and conversations so you can turn them into actual bookings.
+
+2. User Inputs & Setup
+2.1. Profile & Topics
+
+Your profile:
+
+Name (e.g., “Benton”)
+
+Title (“Shaman in the Japanese Shinto tradition”)
+
+Short bio
+
+Links (website, YouTube, book, documentary)
+
+Expertise topics:
+
+Keywords like: “Shinto”, “occult”, “spiritual healing”, “New Age”, “esoteric”, etc.
+
+Target audience & show size preferences:
+
+Minimum YouTube subscribers (e.g., 800+).
+
+Types of shows: “Interview shows”, “Conversations”, “Solo hosts with occasional guests”.
+
+Language: e.g., English.
+
+2.2. Email & Outreach Settings
+
+Sender identity:
+
+From name (e.g., “Benton Ryer”)
+
+From email (e.g., admin@esotericshinto.com)
+
+Your outreach email template (you give the text; the app uses it):
+
+Example fields:
+
+{{host_name}}
+
+{{show_name}}
+
+{{your_name}}
+
+{{your_title}}
+
+{{your_main_link}}
+
+You write something like:
+
+Hello {{host_name}},
+My name is {{your_name}}, and I’m a {{your_title}}. I’m reaching out because…
+
+Follow-up rules:
+
+How many follow-ups (0–2, for example).
+
+Delay between them (e.g., 5–7 days).
+
+Max outreach per day (to avoid spam and email provider limits).
+
+3. Discovery & Research Features
+3.1. Show Discovery
+
+The app:
+
+Searches YouTube for:
+
+Channels, playlists, and videos that match your topics.
+
+Keywords like “podcast”, “interview”, “guest”, “with [Name]”.
+
+Searches podcast directories (via APIs) for:
+
+Shows in relevant categories (spirituality, religion, metaphysics, paranormal, self-help, etc.).
+
+Shows whose descriptions match your topic keywords.
+
+Uses general web search to:
+
+Find show websites or episodes that mention guests and your topics.
+
+3.2. Guest-Focused Filtering
+
+For each show, the app:
+
+Scans episode titles/descriptions for:
+
+“Interview”, “with [Guest]”, “featuring”, “feat.”, “conversation with”, “guest”.
+
+Scores how often episodes have guest-like titles.
+
+Marks shows as:
+
+Guest-heavy (most episodes have guests),
+
+Guest-occasional,
+
+Solo-focused (few or no guests).
+
+You can choose:
+
+“Only shows that regularly have guests.”
+
+Or “Include occasional guest shows.”
+
+3.3. Deduplication & Skipping Repeats
+
+The app must discard and skip repeats at several levels:
+
+Same show appearing in multiple sources:
+
+Merges YouTube channel + podcast feed + website under a single “Show” entry.
+
+Shows you already:
+
+Contacted
+
+Rejected
+
+Booked
+
+Rules:
+
+Each show gets a unique internal ID.
+
+Before adding a new one, the app checks:
+
+URL match
+
+Name similarity
+
+RSS / channel ID
+
+If it’s a repeat:
+
+It doesn’t add a new entry.
+
+It updates the existing show’s info (e.g., latest stats), but does not send another outreach unless you explicitly re-approve.
+
+4. Show Profile: What Each Show Record Includes
+
+Each show entry in the app can store:
+
+Basic Info
+
+Show name
+
+Host(s) name(s), if found
+
+Show description
+
+Primary platform (YouTube / podcast / both)
+
+Country / language (if known)
+
+Links
+
+Main YouTube channel link
+
+Main podcast link (Apple/Spotify/etc.)
+
+Official website
+
+Social media links (Twitter/Instagram/etc.)
+
+Audience Signals
+
+YouTube subscribers / views (approx.)
+
+Estimated podcast popularity (ranking, ratings, review count)
+
+Episode count
+
+Date of last episode (recency)
+
+Contact Info
+
+Email(s) found on website / about page / show notes
+
+Contact form URL if no email
+
+“Best guess” host email if multiple are found
+
+Confidence score (how likely it’s a real contact email)
+
+Relevance & Guest Signals
+
+Topic match score
+
+Guest-likelihood score
+
+Notes (e.g., “Often features spiritual healers”, “open to metaphysical topics”)
+
+Outreach Status
+
+Not reviewed / To review
+
+Approved for outreach
+
+Pitched (date)
+
+Follow-up 1 sent (date)
+
+Follow-up 2 sent (date)
+
+Reply received – positive / neutral / negative
+
+Booked
+
+Not interested / do not contact again
+
+5. Automatic Email Outreach
+5.1. Personalization Logic
+
+When the app finds a host name (from show site, “Hosted by…”, author field, etc.):
+
+It will use:
+
+If host name exists:
+Hello, {{host_name}}!
+
+If no name found:
+
+Fallback to:
+
+Hello there! or Hello, {{show_name}} team!
+
+The app replaces tokens in your email with real data:
+
+{{host_name}} → “Sarah”
+
+{{show_name}} → “Mystic Paths Podcast”
+
+{{your_name}} → “Benton”
+
+{{your_title}} → “a Shaman in the Japanese Shinto tradition”
+
+{{your_main_link}} → your best link (site, docu, book, etc.)
+
+5.2. Sending Behavior
+
+You review a list of “Approved for outreach” shows.
+
+You can:
+
+Select all or some shows.
+
+Confirm sending.
+
+The app:
+
+Sends emails spaced out (e.g., a few minutes apart) to avoid looking like a spam blast.
+
+Respects a daily limit you set.
+
+Logs:
+
+Send time
+
+Email subject/body used
+
+Which template version (if you have multiple)
+
+5.3. Follow-ups
+
+If you choose to:
+
+Follow-up #1:
+
+Trigger: no reply after N days.
+
+Uses a shorter template like:
+
+Hi {{host_name}},
+Just wanted to follow up on my earlier message about possibly joining you on {{show_name}}…
+
+Follow-up #2:
+
+Trigger: still no reply after another N days.
+
+Optional, very gentle:
+
+If it’s not a fit right now, no worries at all. Thank you for reading.
+
+The app will stop all follow-ups if:
+
+It detects a reply.
+
+The email bounces.
+
+The show is marked as “Do not contact”.
+
+6. Handling Replies From Shows
+6.1. Inbox Connection & Sync
+
+To manage replies:
+
+The app connects to your email (via OAuth: e.g., Gmail/Outlook).
+
+It filters emails connected to outreach:
+
+Based on In-Reply-To, subject lines, and email addresses.
+
+Each conversation with a show is:
+
+Attached to that show’s profile.
+
+Displayed as a message thread within the app.
+
+6.2. Auto-Categorization of Replies
+
+The app analyzes replies and tags them:
+
+Positive / Interested:
+
+“We’d love to have you on”, “Let’s schedule”, “This sounds great”
+
+Neutral / Maybe later:
+
+“We’ll keep you in mind”, “Not right now but possible later”
+
+Negative / Not a fit:
+
+“Not interested”, “Our audience isn’t a match”
+
+It then updates show status automatically:
+
+Positive → “Interested”
+
+Neutral → “Maybe later”
+
+Negative → “Not interested”
+
+6.3. Suggested Responses
+
+You still control what you send, but the app can:
+
+Suggest response templates based on reply type:
+
+Example – Positive reply
+
+Tag: “Interested”
+
+Suggested follow-up:
+
+Thank them.
+
+Offer availability.
+
+Share a one-sheet or talking points link.
+
+Status after you send: “Negotiating / Scheduling”
+
+Example – Neutral / Maybe later
+
+Tag: “Maybe later”
+
+App offers:
+
+A light acknowledgment.
+
+Option to set a reminder in X months.
+
+Example – Not interested
+
+Tag: “Not interested”
+
+App offers:
+
+A simple, polite thank-you.
+
+Marks the show as “Do not contact again”.
+
+6.4. Reminders & Tasks
+
+For positive replies, the app can:
+
+Create a task:
+
+“Follow up with Mystic Paths Podcast if no time confirmed by [date].”
+
+Show these tasks on a dashboard:
+
+Today’s follow-ups
+
+This week’s upcoming shows
+
+For fully booked interviews:
+
+Store the date/time of recording.
+
+Optionally sync to your personal calendar (Google, etc.).
+
+7. Workflow States (Your “Guest Funnel”)
+
+Each show moves through clear stages:
+
+Discovered
+
+Found by the system, not yet reviewed.
+
+Qualified
+
+You approve it (relevant, active, good fit).
+
+Pitched
+
+First outreach email sent.
+
+Follow-up
+
+Auto (or manual) follow-up email(s) sent if no response.
+
+Responded: Interested
+
+They want to talk more or book you.
+
+Booked
+
+Recording date scheduled.
+
+Published (optional)
+
+You add the episode link once it’s live.
+
+Archived / Not a fit
+
+You don’t want to contact them again, or they said no.
+
+You can always see:
+
+Counts per stage.
+
+Conversion rates (e.g., “10% of pitched shows reply positively”).
+
+8. Controls for Quality & Safety
+
+To make the app actually successful (and not just spammy):
+
+Relevance Filters:
+
+Minimum activity (e.g., last episode within 3 months).
+
+Minimum episode count (e.g., 10+).
+
+Topic match score threshold (e.g., at least 70/100).
+
+Compliance & Respect:
+
+One outreach sequence per show maximum, unless you manually restart.
+
+Easy way to mark “This show requested no more emails.”
+
+Clear setting to disable auto-follow-ups if you prefer to handle them manually.
+
+Review Queue:
+
+Before sending anything, you can:
+
+Scan the list
+
+Deselect any shows that feel off-brand
+
+Edit details per show (e.g., tweak note: “They did an episode on Japanese folklore”)
+
+9. Analytics & Feedback Loop
+
+To help you improve over time, the app can show:
+
+Per-topic performance:
+
+How many positive replies for “Shinto” vs “general spirituality” vs “healing”.
+
+Best template performance:
+
+If you use multiple email templates, see which one gets more responses.
+
+Show type success:
+
+YouTube-only vs audio-only podcasts.
+
+Small vs large shows.
+
+This helps you refine:
+
+Your topics.
+
+Your messaging.
+
+The type of shows you target.
