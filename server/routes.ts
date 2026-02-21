@@ -2435,24 +2435,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 app.post("/api/discover/youtube", requireAuth, async (req, res) => {
   try {
     const { topics } = req.body;
-    const requireEmail = req.body?.requireEmail ?? true;
-    const profile = await storage.getProfile(req.user!.id);
+const requireEmail = req.body?.requireEmail ?? false; // ✅ default FALSE
 
-    if (!topics || !Array.isArray(topics) || topics.length === 0) {
-      res.status(400).json({ error: "Topics are required" });
-      return;
-    }
+// ✅ Only validate OpenAI if user REALLY requires emails
+if (requireEmail) {
+  const hasOpenAI =
+    Boolean(process.env.OPENAI_API_KEY) ||
+    Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
 
-      // Validate OpenAI for email discovery
-const hasOpenAI =
-  Boolean(process.env.OPENAI_API_KEY) ||
-  Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
-
-if (!hasOpenAI) {
-  res.status(503).json({
-    error: "OpenAI integration required for YouTube email discovery. Please configure OPENAI_API_KEY (or AI_INTEGRATIONS_OPENAI_API_KEY).",
-  });
-  return;
+  if (!hasOpenAI) {
+    res.status(503).json({
+      error:
+        "OpenAI integration required only when requireEmail=true. Configure OPENAI_API_KEY (or AI_INTEGRATIONS_OPENAI_API_KEY), or set requireEmail=false.",
+    });
+    return;
+  }
 }
 
       // Setup Server-Sent Events for progress streaming
@@ -2599,10 +2596,16 @@ if (!hasOpenAI) {
               found: discoveredShows.length,
             });
             
-            // Extract Email
-            const contactEmail = await extractEmailWithGPT(channelData, recentVideos);
-            
-            if (!contactEmail && requireEmail) continue;
+            // Extract Email (best-effort)
+let contactEmail: string | null = null;
+
+try {
+  contactEmail = await extractEmailWithGPT(channelData, recentVideos);
+} catch (e) {
+  contactEmail = null;
+}
+
+if (!contactEmail && requireEmail) continue; // only skip when strictly required
 
             console.log(` ✅ FOUND MATCH: "${channelTitle}" (${contactEmail || "no email"})`);
             
