@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertProfileSchema, insertShowSchema, insertEmailTemplateSchema, insertOutreachCampaignSchema, insertChannelStatsSchema, insertUserSchema } from "@shared/schema";
@@ -28,62 +28,28 @@ if (!stripeSecretKey) {
 }
 console.log('Initializing Stripe with key starting with:', stripeSecretKey.substring(0, 7));
 const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: "2024-11-20.acacia",
+  apiVersion: "2024-11-20",
 });
 
-// Initialize OpenAI using Replit AI Integrations
+// Initialize OpenAI (works on Vercel/local + optional Replit AI integrations)
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL, // only set if you actually use Replit integrations
 });
 
-// Initialize YouTube API (using connectors)
-let connectionSettings: any;
-
+// Initialize YouTube API
 async function getAccessToken() {
-  if (connectionSettings?.settings?.expires_at && new Date(connectionSettings.settings.expires_at).getTime() > Date.now()) {
-    return connectionSettings.settings.access_token;
+  if (!process.env.YOUTUBE_API_KEY) {
+  throw new Error('YOUTUBE_API_KEY not set in environment variables');
   }
-  
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
-
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=youtube',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  const accessToken = connectionSettings?.settings?.access_token || connectionSettings?.settings?.oauth?.credentials?.access_token;
-
-  if (!connectionSettings || !accessToken) {
-    throw new Error('YouTube not connected. Please authorize the YouTube integration in your Replit project settings.');
-  }
-  return accessToken;
+  return process.env.YOUTUBE_API_KEY;
 }
 
-// WARNING: Never cache this client.
-// Access tokens expire, so a new client must be created each time.
 async function getYoutubeClient() {
-  const accessToken = await getAccessToken();
-  
-  // Create OAuth2 client with the access token
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  
-  return google.youtube({ version: 'v3', auth: oauth2Client });
+  if (!process.env.YOUTUBE_API_KEY) {
+    throw new Error("YOUTUBE_API_KEY missing from .env file");
+  }
+  return google.youtube({ version: "v3", auth: process.env.YOUTUBE_API_KEY });
 }
 
 // Fetch channel statistics from YouTube Data API
@@ -350,7 +316,6 @@ async function extractContactEmail(websiteUrl: string): Promise<string | null> {
       },
       signal: AbortSignal.timeout(8000), // 8 second timeout
       redirect: 'follow',
-      follow: 3, // Limit redirects
     });
     
     if (!response.ok || response.status >= 400) return null;
@@ -597,6 +562,10 @@ async function analyzeChannelForGuests(youtube: any, channelId: string): Promise
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // SECURITY: Hard fail in production if no secret is set
+  if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET is missing in production environment!");
+  }
   // Session middleware (requires trust proxy to be set for Railway/production)
   app.use(
     session({
@@ -1494,7 +1463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // SECURITY: Verify session belongs to the current user
       const sessionUserId = session.metadata?.userId;
-      if (!sessionUserId || sessionUserId !== req.user!.id) {
+      if (!sessionUserId || sessionUserId !== String(req.user!.id)) {
         console.error(`Session verification failed: Session userId ${sessionUserId} does not match authenticated user ${req.user!.id}`);
         res.status(403).json({ error: "Unauthorized: This session does not belong to you" });
         return;
@@ -1554,7 +1523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stripe Webhook Handler for subscription events
-  app.post("/api/stripe/webhook", async (req, res) => {
+  app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
     const sig = req.headers['stripe-signature'];
     
     if (!sig) {
@@ -1789,7 +1758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // SECURITY: Verify session belongs to the current user via metadata (first check)
       const sessionUserId = session.metadata?.userId;
-      if (!sessionUserId || sessionUserId !== req.user!.id) {
+      if (!sessionUserId || sessionUserId !== String(req.user!.id)) {
         console.error(`Session verification failed: Session userId ${sessionUserId} does not match authenticated user ${req.user!.id}`);
         res.status(403).json({ error: "Unauthorized: This session does not belong to you" });
         return;
@@ -2462,51 +2431,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // YouTube Discovery with Progress Streaming
-  app.post("/api/discover/youtube", requireAuth, async (req, res) => {
-    try {
-      const { topics } = req.body;
-      const profile = await storage.getProfile(req.user!.id);
+ // YouTube Discovery with Progress Streaming (POWERFUL VERSION)
+app.post("/api/discover/youtube", requireAuth, async (req, res) => {
+  try {
+    const { topics } = req.body;
+    const requireEmail = req.body?.requireEmail ?? true;
+    const profile = await storage.getProfile(req.user!.id);
 
-      if (!topics || !Array.isArray(topics) || topics.length === 0) {
-        res.status(400).json({ error: "Topics are required" });
-        return;
-      }
+    if (!topics || !Array.isArray(topics) || topics.length === 0) {
+      res.status(400).json({ error: "Topics are required" });
+      return;
+    }
 
       // Validate OpenAI for email discovery
-      if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-        res.status(503).json({ 
-          error: "OpenAI integration required for YouTube email discovery. Please configure OpenAI in project settings." 
-        });
-        return;
-      }
+const hasOpenAI =
+  Boolean(process.env.OPENAI_API_KEY) ||
+  Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
+
+if (!hasOpenAI) {
+  res.status(503).json({
+    error: "OpenAI integration required for YouTube email discovery. Please configure OPENAI_API_KEY (or AI_INTEGRATIONS_OPENAI_API_KEY).",
+  });
+  return;
+}
 
       // Setup Server-Sent Events for progress streaming
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no', // Disable nginx buffering
+        'X-Accel-Buffering': 'no',
       });
-      res.flushHeaders(); // Flush headers immediately
+      res.flushHeaders();
 
       const sendProgress = (data: any) => {
         res.write(`data: ${JSON.stringify(data)}\n\n`);
-        // No need to flush on every write - Node.js handles this
       };
 
       const youtube = await getYoutubeClient();
       
       const targetCount = profile?.targetShowCount || 20;
-      const maxChannels = profile?.maxChannelsToSearch || 300; // Increased from 200
+      // Increased Search Limit to find more emails
+      const maxChannels = 500; 
       
-      console.log(`🔍 Searching YouTube for topics: ${topics.join(", ")}`);
-      console.log(`🎯 Target: ${targetCount} qualifying shows (max ${maxChannels} channels to check)`);
-      console.log(`📊 Filters - Min Subscribers: ${profile?.minSubscribers}, Guest Only: ${profile?.guestOnlyShows}`);
-
+      console.log(`🔍 POWERFUL SEARCH STARTING: ${topics.join(", ")}`);
+      
       sendProgress({
         type: 'start',
-        message: `Searching YouTube for ${topics.join(", ")}...`,
+        message: `Initializing powerful search for ${topics.join(", ")}...`,
         target: targetCount,
         maxChannels,
       });
@@ -2515,83 +2487,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allChannels = new Map();
       const processedChannelIds = new Set();
       
-      // Varied search strategies to ensure we find shows
-      const searchVariations = [
-        (topic: string) => `${topic} podcast interview`,
-        (topic: string) => `${topic} interview`,
-        (topic: string) => `${topic} podcast`,
-        (topic: string) => `${topic} talks`,
-        (topic: string) => `${topic} conversations`,
-        (topic: string) => `${topic} show`,
+      // 1. Generate 10 Variations per Topic (Logic Upgrade)
+      const searchQueries: string[] = [];
+      const variations = [
+        "podcast", 
+        "interview", 
+        "show", 
+        "channel", 
+        "conversations", 
+        "talks", 
+        "podcast clips", 
+        "stories", 
+        "insights", 
+        "hosted by"
       ];
-      
-      let searchIteration = 0;
-      const maxIterations = searchVariations.length;
-      
-      // Keep searching with varied strategies until we find shows
-      while (discoveredShows.length < targetCount && searchIteration < maxIterations) {
-        const searchStrategy = searchVariations[searchIteration];
-        
-        for (const topic of topics) {
-          const searchQuery = searchStrategy(topic);
-          const resultsPerQuery = Math.min(50, Math.ceil((maxChannels - allChannels.size) / topics.length));
-          
-          if (resultsPerQuery <= 0) break;
-          
-          console.log(`  🔎 [${searchIteration + 1}/${maxIterations}] Searching: "${searchQuery}"`);
-          sendProgress({
-            type: 'searching',
-            message: `Searching: "${searchQuery}"`,
-            progress: Math.round((processedChannelIds.size / maxChannels) * 100),
-            found: discoveredShows.length,
-            target: targetCount,
-          });
-          
-          try {
-            const searchResponse = await youtube.search.list({
-              part: ["snippet"],
-              q: searchQuery,
-              type: ["channel"],
-              maxResults: resultsPerQuery,
-              relevanceLanguage: "en",
-            });
 
-            const channels = searchResponse.data.items || [];
-            console.log(`    ✅ Found ${channels.length} channels`);
-            
-            for (const channel of channels) {
-              if (channel.id?.channelId && !allChannels.has(channel.id.channelId)) {
-                allChannels.set(channel.id.channelId, channel);
-              }
-            }
-          } catch (error) {
-            console.error(`    ❌ Error searching:`, error);
-          }
+      for (const topic of topics) {
+        for (const suffix of variations) {
+           searchQueries.push(`${topic} ${suffix}`);
         }
+      }
+
+      // Randomize queries to get diverse results quickly
+      searchQueries.sort(() => Math.random() - 0.5);
+      
+      // 2. Execute Search Loop
+      for (const searchQuery of searchQueries) {
+        // Stop if we hit the target
+        if (discoveredShows.length >= targetCount) break;
+        // Stop if we checked too many channels (safety limit)
+        if (allChannels.size >= maxChannels) break;
+
+        console.log(` 🔎 Searching: "${searchQuery}"`);
         
-        // Process channels
+        sendProgress({
+          type: 'searching',
+          message: `Deep Search: "${searchQuery}"`,
+          progress: Math.round((processedChannelIds.size / maxChannels) * 100),
+          found: discoveredShows.length,
+          target: targetCount,
+        });
+        
+        try {
+          // Fetch MAX results (50) for better discovery
+          const searchResponse = await youtube.search.list({
+            part: ["snippet"],
+            q: searchQuery,
+            type: ["channel"],
+            maxResults: 50, 
+            relevanceLanguage: "en",
+          });
+
+          const channels = searchResponse.data.items || [];
+          
+          for (const channel of channels) {
+            if (channel.id?.channelId && !allChannels.has(channel.id.channelId)) {
+              allChannels.set(channel.id.channelId, channel);
+            }
+          }
+        } catch (error) {
+          console.error(` ❌ Error searching "${searchQuery}":`, error);
+          // Continue to next query instead of crashing
+          continue;
+        }
+
+        // Process newly found channels immediately
+        // (Converted logic to process in batches to keep UI responsive)
         for (const [channelId, channel] of Array.from(allChannels.entries())) {
           if (processedChannelIds.has(channelId)) continue;
           if (discoveredShows.length >= targetCount) break;
           
           processedChannelIds.add(channelId);
-          const progress = Math.round((processedChannelIds.size / maxChannels) * 100);
           
-          sendProgress({
-            type: 'processing',
-            message: `Analyzing channel: ${channel.snippet?.title}`,
-            progress,
-            found: discoveredShows.length,
-            target: targetCount,
-            processed: processedChannelIds.size,
-          });
-
-          // Check for duplicates
+          // Check duplicates
           const existing = await storage.findDuplicateShow(req.user!.id, channelId);
-          if (existing) {
-            console.log(`⏭️ Skipping duplicate: "${channel.snippet?.title}"`);
-            continue;
-          }
+          if (existing) continue;
 
           try {
             const channelResponse = await youtube.channels.list({
@@ -2604,63 +2574,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             const subscribers = parseInt(channelData.statistics?.subscriberCount || "0");
             const channelTitle = channelData.snippet?.title || "Unknown";
-            
-            // Apply subscriber filter
-            if (profile?.minSubscribers && subscribers < profile.minSubscribers) {
-              console.log(`❌ Low subscribers: "${channelTitle}"`);
-              continue;
-            }
 
-            // Analyze for guest patterns
+            // Filter: Min Subscribers
+            if (profile?.minSubscribers && subscribers < profile.minSubscribers) continue;
+
+            // Filter: Guest Score (Relaxed slightly for better discovery)
             const { guestScore, averageViews } = await analyzeChannelForGuests(youtube, channelId);
+            if (profile?.guestOnlyShows && guestScore < 40) continue; // Lowered threshold to 40
 
-            if (profile?.guestOnlyShows && guestScore < 50) {
-              console.log(`❌ Low guest score: "${channelTitle}"`);
-              continue;
-            }
-
-            // Get recent videos for email extraction
+            // Get videos for email extraction
             const videosResponse = await youtube.search.list({
               part: ["snippet"],
               channelId,
               type: ["video"],
-              maxResults: 10,
+              maxResults: 5, // Reduced to 5 to save quota, usually enough
               order: "date",
             });
             const recentVideos = videosResponse.data.items || [];
 
-            // Try to extract email using GPT
             sendProgress({
               type: 'email_search',
-              message: `Finding contact email for ${channelTitle}...`,
-              progress,
+              message: `Analyzing: ${channelTitle}...`,
+              progress: Math.round((processedChannelIds.size / maxChannels) * 100),
               found: discoveredShows.length,
             });
             
+            // Extract Email
             const contactEmail = await extractEmailWithGPT(channelData, recentVideos);
             
-            if (!contactEmail) {
-              console.log(`     ❌ No email found for "${channelTitle}"`);
-              continue;
-            }
+            if (!contactEmail && requireEmail) continue;
 
-            console.log(`✅ Adding "${channelTitle}" with email: ${contactEmail}`);
+            console.log(` ✅ FOUND MATCH: "${channelTitle}" (${contactEmail || "no email"})`);
             
-            const channelUrl = `https://youtube.com/channel/${channelId}`;
             const lastVideoDate = recentVideos[0]?.snippet?.publishedAt || null;
 
             const show = await storage.createShow(req.user!.id, {
               profileId: profile!.id,
               name: channelTitle,
               host: channelData.snippet?.customUrl || null,
-              description: channelData.snippet?.description 
-                ? channelData.snippet.description.substring(0, 500) 
-                : null,
+              description: channelData.snippet?.description ? channelData.snippet.description.substring(0, 500) : null,
               platform: "youtube",
-              youtubeChannelUrl: channelUrl,
+              youtubeChannelUrl: `https://www.youtube.com/channel/${channelId}`,
               youtubeChannelId: channelId,
               contactEmail,
-              subscriberCount: subscribers,
+              subscribers: subscribers,
               guestScore,
               averageViews,
               lastEpisodeDate: lastVideoDate,
@@ -2671,7 +2628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sendProgress({
               type: 'found',
               message: `Added: ${channelTitle}`,
-              progress,
+              progress: Math.round((processedChannelIds.size / maxChannels) * 100),
               found: discoveredShows.length,
               target: targetCount,
               show: {
@@ -2681,21 +2638,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             });
           } catch (error) {
-            console.error(`Error processing channel:`, error);
+            console.error(`Error processing channel ${channelId}:`, error);
           }
         }
-        
-        // If we found shows, we can stop
-        if (discoveredShows.length > 0) break;
-        
-        // Try next search strategy
-        searchIteration++;
       }
       
-      console.log(`\n✅ YouTube Discovery complete!`);
-      console.log(`   Found: ${discoveredShows.length} shows with emails`);
-      console.log(`   Searched: ${processedChannelIds.size} channels`);
-
       sendProgress({
         type: 'complete',
         message: `Discovery complete! Found ${discoveredShows.length} shows`,
@@ -2707,12 +2654,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.end();
     } catch (error: any) {
       console.error("YouTube discovery error:", error);
-      try {
-        res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
-        res.end();
-      } catch {
-        // Response already ended
-      }
+      res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
+      res.end();
     }
   });
 
@@ -2730,16 +2673,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const minSubscribers = profile?.minSubscribers || 100;
       
       // Validate OpenAI credentials if Deep Research is enabled
-      if (deepResearch) {
-        console.log(`🔬 DEEP RESEARCH MODE ENABLED - Will use GPT to find YouTube channel emails`);
-        
-        if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
-          res.status(503).json({ 
-            error: "Deep Research unavailable: OpenAI integration not configured. Please set up OpenAI in your Replit project settings." 
-          });
-          return;
-        }
-      }
+if (deepResearch) {
+  console.log(`🔬 DEEP RESEARCH MODE ENABLED - Will use GPT to find YouTube channel emails`);
+
+  const hasOpenAI =
+    Boolean(process.env.OPENAI_API_KEY) ||
+    Boolean(process.env.AI_INTEGRATIONS_OPENAI_API_KEY);
+
+  if (!hasOpenAI) {
+    res.status(503).json({
+      error:
+        "Deep Research unavailable: OpenAI not configured. Please set OPENAI_API_KEY (preferred) or AI_INTEGRATIONS_OPENAI_API_KEY.",
+    });
+    return;
+  }
+}
 
       console.log(`\n🔍 HYBRID DISCOVERY STARTED`);
       console.log(`📋 Topics: ${topics.join(", ")}`);
@@ -5020,7 +4968,6 @@ Please provide structured research results in the following JSON format:
   const httpServer = createServer(app);
   return httpServer;
 }
-
 // Helper functions
 function calculateGuestScore(titles: string[]): number {
   if (!titles || titles.length === 0) return 0;
